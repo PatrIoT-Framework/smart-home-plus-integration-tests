@@ -1,4 +1,4 @@
-package io.patriot-framework;
+package io.patriot_framework;
 
 /**
  * Hello world!
