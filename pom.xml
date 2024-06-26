@@ -7,23 +7,18 @@
   <version>${patriot.framework.version}</version>
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>17</source>
-          <target>17</target>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.2.5</version>
-      </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.11.0</version>
+            <configuration>
+                <release>${java.version}</release>
+            </configuration>
+        </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <version>3.0.0-M1</version>
+            <version>3.2.5</version>
             <configuration>
                 <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
@@ -37,66 +32,50 @@
   <url>http://maven.apache.org</url>
 
   <properties>
-    <patriot.framework.version>5.0.0-SNAPSHOT-DP</patriot.framework.version>
+        <patriot.framework.version>5.0.0-SNAPSHOT-DP</patriot.framework.version>
+      <java.version>17</java.version>
   </properties>
 
   <dependencies>
-<!--    <dependency>-->
-<!--      <groupId>org.junit.jupiter</groupId>-->
-<!--      <artifactId>junit-jupiter-api</artifactId>-->
-<!--      <version>5.4.0</version>-->
-<!--      <scope>test</scope>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.junit.jupiter</groupId>-->
-<!--      <artifactId>junit-jupiter-engine</artifactId>-->
-<!--      <version>5.4.0</version>-->
-<!--      <scope>test</scope>-->
-<!--    </dependency>-->
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>5.4.0</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <version>5.8.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <version>5.8.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.platform</groupId>
-      <artifactId>junit-platform-commons</artifactId>
-      <version>1.8.1</version>
-      <scope>test</scope>
-    </dependency>
-
-
-
-    <dependency>
-      <groupId>io.patriot-framework</groupId>
-      <artifactId>patriot-api</artifactId>
-      <version>${patriot.framework.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.patriot-framework</groupId>
-      <artifactId>docker-network-simulator</artifactId>
-      <version>${patriot.framework.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.rest-assured</groupId>
-      <artifactId>rest-assured</artifactId>
-      <version>5.2.0</version>
-      <scope>test</scope>
-    </dependency>
+      <dependency>
+          <groupId>io.patriot-framework</groupId>
+          <artifactId>patriot-api</artifactId>
+          <version>${patriot.framework.version}</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.patriot-framework</groupId>
+          <artifactId>docker-network-simulator</artifactId>
+          <version>${patriot.framework.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-api</artifactId>
+          <version>5.9.0</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-engine</artifactId>
+          <version>5.9.0</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.rest-assured</groupId>
+          <artifactId>rest-assured</artifactId>
+          <version>3.1.1</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.rest-assured</groupId>
+          <artifactId>json-path</artifactId>
+          <version>3.1.1</version>
+      </dependency>
+      <dependency>
+          <groupId>io.rest-assured</groupId>
+          <artifactId>json-schema-validator</artifactId>
+          <version>3.1.1</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 </project>
