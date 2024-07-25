@@ -3,24 +3,16 @@ package io.patriot_framework.samples.test;
 import io.patriot_framework.generator.controll.client.CoapDataFeedHandler;
 import io.patriot_framework.generator.dataFeed.ConstantDataFeed;
 import io.patriot_framework.generator.dataFeed.DataFeed;
-import io.patriot_framework.generator.device.Device;
-import io.patriot_framework.generator.device.impl.basicSensors.Thermometer;
-import io.patriot_framework.generator.utils.JSONSerializer;
 import io.patriot_framework.hub.PatriotHub;
 import io.patriot_framework.hub.PropertiesNotLoadedException;
 import io.patriot_framework.samples.base.SmartDeviceBase;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import io.patriot_framework.virtualsmarthomeplus.DTOs.ThermometerDTO;
+import io.patriot_framework.virtualsmarthomeplus.utils.VirtualSmartHomePlusHttpClient;
 import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapResponse;
 import org.eclipse.californium.elements.exception.ConnectorException;
 import org.junit.jupiter.api.Test;
 
-import static io.restassured.RestAssured.baseURI;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -101,7 +93,6 @@ public class ThermometerTest extends SmartDeviceBase {
     }
 
 
-
     @Test
     public void coapClientTest() throws PropertiesNotLoadedException, ConnectorException, IOException {
         String ip = PatriotHub.getInstance()
@@ -109,46 +100,22 @@ public class ThermometerTest extends SmartDeviceBase {
                 .getAddressForNetwork("SmartHomeNet1");
         String port = "5683";
 
-        CoapControlClient coapClient = new CoapControlClient("127.0.0.1" + ":5683");
+        CoapControlClient coapClient = new CoapControlClient(ip + ":" + port);
         DataFeed thermometerDataFeed = new ConstantDataFeed(77);
         thermometerDataFeed.setLabel("0");
-        Device thermometer = new Thermometer("thermometer2", thermometerDataFeed);
-        createDevice("127.0.0.1", 8080, "thermometer", thermometer);
 
-        CoapDataFeedHandler handler = coapClient.getSensor(thermometer.getLabel()).getDataFeedHandler(thermometerDataFeed.getLabel());
+        ThermometerDTO thermometerDto = new ThermometerDTO();
+        thermometerDto.setLabel("t1");
+        VirtualSmartHomePlusHttpClient vshpClient = new VirtualSmartHomePlusHttpClient(ip, 8080);
+        vshpClient.putDevice( "thermometer", thermometerDto);
 
+        CoapDataFeedHandler handler = coapClient.getSensor("t1").getDataFeedHandler(thermometerDataFeed.getLabel());
 
-
-        handler.updateDataFeed(thermometerDataFeed); // todo tohle by melo dat vedet ze selhalo
+        handler.updateDataFeed(thermometerDataFeed);         // todo tohle by melo dat vedet ze selhalo
         // todo neprotunelovalo se to k coap serveru ve vshp
-        assertTrue(false);
-    }
 
-    private void createDevice(String ip, int port, String deviceType, Device device) {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            String uri = "http://" + ip + ":" + port + "/api/v0.1/house/device/" + deviceType + "/" + device.getLabel();
-            // Create the PUT request
-            System.out.println("uri: " +  uri);
-            HttpPut httpPut = new HttpPut(uri);
-            // Convert the device object to JSON string
-            String json = JSONSerializer.serialize(device);
-            // Set the JSON string as the entity of the PUT request
-            httpPut.setEntity(new StringEntity(json, "UTF-8"));
-            httpPut.setHeader("Content-Type", "application/json");
+        thermometerDto = (ThermometerDTO) vshpClient.getDevice("thermometer", "t1");
 
-            // Execute the request
-            try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
-                // Handle the response if needed
-                int statusCode = response.getStatusLine().getStatusCode();
-                System.out.println("Response status: " + statusCode);
-
-                // Optionally handle the response body, headers, etc.
-                String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
-                System.out.println("Response body: " + responseBody);
-            }
-        } catch (IOException e) {
-            // Handle exceptions
-            e.printStackTrace();
-        }
+        assertEquals(77.0f, thermometerDto.getTemperature());
     }
 }

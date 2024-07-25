@@ -1,41 +1,62 @@
-package io.patriot_framework.samples.test;
+package io.patriot_framework.samples.demoTests;
 
 import io.patriot_framework.generator.Data;
 import io.patriot_framework.generator.controll.client.CoapControlClient;
 import io.patriot_framework.generator.controll.client.CoapDataFeedHandler;
-import io.patriot_framework.generator.coordinates.UndirectedGraphCoordinate;
-import io.patriot_framework.generator.coordinates.UndirectedGraphSpace;
 import io.patriot_framework.generator.dataFeed.ConstantDataFeed;
 import io.patriot_framework.generator.dataFeed.DataFeed;
-import io.patriot_framework.generator.device.Device;
 import io.patriot_framework.generator.device.impl.basicSensors.Default;
-import io.patriot_framework.generator.device.impl.basicSensors.Thermometer;
 import io.patriot_framework.generator.device.passive.sensors.Sensor;
-import io.patriot_framework.generator.eventGenerator.Conductor;
-import io.patriot_framework.generator.eventGenerator.DiscreteTime;
-import io.patriot_framework.generator.eventGenerator.SimulationBase;
-import io.patriot_framework.generator.eventGenerator.Time;
-import io.patriot_framework.generator.eventGenerator.graphFire.ChildWithMatches;
-import io.patriot_framework.generator.eventGenerator.graphFire.Fire;
-import io.patriot_framework.generator.eventGenerator.graphFire.RoomTempDataFeed;
-import io.patriot_framework.generator.eventGenerator.graphFire.TemperatureDiffuser;
-import io.patriot_framework.generator.eventGenerator.simulationAdapter.SimulationAdapter;
-import io.patriot_framework.generator.utils.JSONSerializer;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import io.patriot_framework.generator.eventSimulator.Time.DiscreteTimeSeconds;
+import io.patriot_framework.generator.eventSimulator.Time.Time;
+import io.patriot_framework.generator.eventSimulator.coordinates.UndirectedGraphCoordinate;
+import io.patriot_framework.generator.eventSimulator.coordinates.UndirectedGraphSpace;
+import io.patriot_framework.generator.eventSimulator.eventGenerator.conductor.Conductor;
+import io.patriot_framework.generator.eventSimulator.eventGenerator.eventBus.EventBusClientBase;
+import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.ChildWithMatches;
+import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.Fire;
+import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.RoomTempDataFeed;
+import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.TemperatureDiffuser;
+import io.patriot_framework.hub.PatriotHub;
+import io.patriot_framework.hub.PropertiesNotLoadedException;
+import io.patriot_framework.virtualsmarthomeplus.DTOs.DeviceDTO;
+import io.patriot_framework.virtualsmarthomeplus.DTOs.ThermometerDTO;
 import org.eclipse.californium.elements.exception.ConnectorException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import io.patriot_framework.virtualsmarthomeplus.utils.VirtualSmartHomePlusHttpClient;
 
 import java.io.IOException;
-import java.util.List;
 
 public class FireSimulation {
+    String vshp1IP;
+    String vshp2IP;
+
+    VirtualSmartHomePlusHttpClient vshpClient;
+    DeviceDTO thermometerDTO1;
+    DeviceDTO thermometerDTO2;
+
+
+
+    @BeforeAll
+    public void setup() throws PropertiesNotLoadedException {
+        vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
+        vshp2IP = PatriotHub.getInstance().getApplication("smarthome2").getIPAddress();
+        vshpClient = new VirtualSmartHomePlusHttpClient(vshp1IP, 8080);
+
+        thermometerDTO1= new ThermometerDTO();
+        thermometerDTO1.setLabel("t1");
+        thermometerDTO2 = new ThermometerDTO();
+        thermometerDTO2.setLabel("t2");
+
+        vshpClient.putDevice("thermometer", thermometerDTO1);
+        vshpClient.putDevice("thermometer", thermometerDTO2);
+//        createDevice( "thermometer", new Thermometer("t1", new ConstantDataFeed(-1.0)));
+//        createDevice(vshp2IP, 8080, "thermometer", new Thermometer("t2", new ConstantDataFeed(-1.0)));
+    }
+
     @Test
-    public void test() {
+    public void test() throws PropertiesNotLoadedException {
         UndirectedGraphSpace houseSpace = new UndirectedGraphSpace.UndirectedGraphSpaceBuilder()
                 .addEdge("garage", "entrance")
                 .addEdge("garage", "corridor")
@@ -46,19 +67,14 @@ public class FireSimulation {
                 .addEdge("livingRoom", "bedroom")
                 .addEdge("workroom", "bedroom")
                 .build();
-
         houseSpace.getAll().forEach(x -> x.setData("temperature", new Data(Integer.class, 20)));
 
-
-
-        createDevice("127.0.0.1", 8080, "thermometer", new Thermometer("t1", new ConstantDataFeed(-1.0)));
-        createDevice("127.0.0.1", 8080, "thermometer", new Thermometer("t2", new ConstantDataFeed(-1.0)));
 
         RoomTempAdapter livingRoomAdapter;
         try {
              livingRoomAdapter = new RoomTempAdapter(
                     houseSpace.getCoordinate("livingRoom"),
-                    "127.0.0.1",
+                    vshp1IP,
                     5683,
                     "t1",
                     "0"
@@ -73,7 +89,7 @@ public class FireSimulation {
         try {
             garageAdapter = new RoomTempAdapter(
                     houseSpace.getCoordinate("garage"),
-                    "127.0.0.1",
+                    vshp2IP,
                     5683,
                     "t2",
                     "0"
@@ -124,25 +140,27 @@ public class FireSimulation {
             System.out.println("Time: " + i);
             System.out.println();
 
-            houseSpace.getAll().forEach(x -> System.out.println(x));
 
-            List<Data> temp = livingRoomThermometer.requestData();
-            System.out.println(temp.get(0));
 
-            List<Data> temp1 = corridorThermometer.requestData();
-            System.out.println(temp1.get(0));
-
-            List<Data> temp2 = garageThermometer.requestData();
-            System.out.println(temp2.get(0));
+//            houseSpace.getAll().forEach(x -> System.out.println(x));
+//
+//            List<Data> temp = livingRoomThermometer.requestData();
+//            System.out.println(temp.get(0));
+//
+//            List<Data> temp1 = corridorThermometer.requestData();
+//            System.out.println(temp1.get(0));
+//
+//            List<Data> temp2 = garageThermometer.requestData();
+//            System.out.println(temp2.get(0));
         }
     }
 
 
-    private class RoomTempAdapter extends SimulationBase {
+    private class RoomTempAdapter extends EventBusClientBase {
         private CoapControlClient ccc;
         private String deviceLabel;
         final private String dataFeedLabel;
-        private Time time = new DiscreteTime();
+        private Time time = new DiscreteTimeSeconds();
         private CoapDataFeedHandler dataFeedHandler;
         private Integer temperature = -2;
         private UndirectedGraphCoordinate myRoom;
@@ -159,15 +177,11 @@ public class FireSimulation {
 
         @Override
         public void init () {
-            registerAwake(new DiscreteTime(0));
+            registerRecurringAwake(new DiscreteTimeSeconds(1));
         }
 
         @Override
         public void awake () {
-            time = eventBus.getTime();
-            time.setValue(time.getValue() + 1);
-            registerAwake(time);
-
             temperature = myRoom.getData("temperature").get(Integer.class);
             DataFeed newDataFeed = new ConstantDataFeed(temperature);
             newDataFeed.setLabel(dataFeedLabel);
@@ -184,34 +198,4 @@ public class FireSimulation {
         public void receive (Data message, String topic){
         }
     }
-
-    private void createDevice(String ip, int port, String deviceType, Device device) {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            String uri = "http://" + ip + ":" + port + "/api/v0.1/house/device/" + deviceType + "/" + device.getLabel();
-            // Create the PUT request
-            System.out.println("uri: " +  uri);
-            HttpPut httpPut = new HttpPut(uri);
-            // Convert the device object to JSON string
-            String json = JSONSerializer.serialize(device);
-            // Set the JSON string as the entity of the PUT request
-            httpPut.setEntity(new StringEntity(json, "UTF-8"));
-            httpPut.setHeader("Content-Type", "application/json");
-
-            // Execute the request
-            try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
-                // Handle the response if needed
-                int statusCode = response.getStatusLine().getStatusCode();
-                System.out.println("Response status: " + statusCode);
-
-                // Optionally handle the response body, headers, etc.
-                String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
-                System.out.println("Response body: " + responseBody);
-            }
-        } catch (IOException e) {
-            // Handle exceptions
-            e.printStackTrace();
-        }
-    }
-
-
 }
