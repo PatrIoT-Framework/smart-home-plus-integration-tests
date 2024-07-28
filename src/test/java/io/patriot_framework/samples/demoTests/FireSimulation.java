@@ -9,13 +9,17 @@ import io.patriot_framework.generator.device.impl.basicSensors.Default;
 import io.patriot_framework.generator.device.passive.sensors.Sensor;
 import io.patriot_framework.generator.eventSimulator.Time.DiscreteTimeSeconds;
 import io.patriot_framework.generator.eventSimulator.Time.Time;
-import io.patriot_framework.generator.eventSimulator.coordinates.UndirectedGraphCoordinate;
-import io.patriot_framework.generator.eventSimulator.coordinates.UndirectedGraphSpace;
+
+import io.patriot_framework.generator.eventSimulator.coordinates.graph.UndirectedGraphCoordinate;
+import io.patriot_framework.generator.eventSimulator.coordinates.graph.UndirectedGraphSpace;
 import io.patriot_framework.generator.eventSimulator.eventGenerator.conductor.Conductor;
 import io.patriot_framework.generator.eventSimulator.eventGenerator.eventBus.EventBusClientBase;
+import io.patriot_framework.generator.eventSimulator.eventGenerator.eventBus.EventBusImpl;
+import io.patriot_framework.generator.eventSimulator.eventGenerator.simulationAdapter.DataFeedMessenger;
+import io.patriot_framework.generator.eventSimulator.eventGenerator.simulationAdapter.SensorAdapterBase;
+import io.patriot_framework.generator.eventSimulator.eventGenerator.simulationAdapter.coapMessengers.CoapDataFeedMessenger;
 import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.ChildWithMatches;
 import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.Fire;
-import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.RoomTempDataFeed;
 import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.TemperatureDiffuser;
 import io.patriot_framework.hub.PatriotHub;
 import io.patriot_framework.hub.PropertiesNotLoadedException;
@@ -25,174 +29,113 @@ import org.eclipse.californium.elements.exception.ConnectorException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import io.patriot_framework.virtualsmarthomeplus.utils.VirtualSmartHomePlusHttpClient;
+import org.junit.jupiter.api.TestInstance;
 
 import java.io.IOException;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class FireSimulation {
     String vshp1IP;
-    String vshp2IP;
-
+    CoapControlClient ccc;
     VirtualSmartHomePlusHttpClient vshpClient;
-    DeviceDTO thermometerDTO1;
-    DeviceDTO thermometerDTO2;
-
+    Conductor conductor;
 
 
     @BeforeAll
     public void setup() throws PropertiesNotLoadedException {
         vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
-        vshp2IP = PatriotHub.getInstance().getApplication("smarthome2").getIPAddress();
         vshpClient = new VirtualSmartHomePlusHttpClient(vshp1IP, 8080);
 
-        thermometerDTO1= new ThermometerDTO();
-        thermometerDTO1.setLabel("t1");
-        thermometerDTO2 = new ThermometerDTO();
-        thermometerDTO2.setLabel("t2");
-
-        vshpClient.putDevice("thermometer", thermometerDTO1);
-        vshpClient.putDevice("thermometer", thermometerDTO2);
-//        createDevice( "thermometer", new Thermometer("t1", new ConstantDataFeed(-1.0)));
-//        createDevice(vshp2IP, 8080, "thermometer", new Thermometer("t2", new ConstantDataFeed(-1.0)));
-    }
-
-    @Test
-    public void test() throws PropertiesNotLoadedException {
         UndirectedGraphSpace houseSpace = new UndirectedGraphSpace.UndirectedGraphSpaceBuilder()
-                .addEdge("garage", "entrance")
-                .addEdge("garage", "corridor")
-                .addEdge("garage", "livingRoom")
-                .addEdge("entrance", "corridor")
-                .addEdge("corridor", "livingRoom")
-                .addEdge("corridor", "workroom")
-                .addEdge("livingRoom", "bedroom")
                 .addEdge("workroom", "bedroom")
+                .addEdge("workroom", "corridor")
+                .addEdge("corridor", "toilet")
+                .addEdge("corridor", "bathroom")
+                .addEdge("corridor", "livingRoom")
+                .addEdge("toilet", "bathroom")
+                .addEdge("toilet", "kitchen")
+                .addEdge("kitchen", "bathroom")
+                .addEdge("livingRoom", "kitchen")
+                .addEdge("livingRoom", "bathroom")
+                .addEdge("livingRoom", "bedroom")
                 .build();
         houseSpace.getAll().forEach(x -> x.setData("temperature", new Data(Integer.class, 20)));
 
+        ccc = new CoapControlClient(vshp1IP + ":" + 5683);
 
-        RoomTempAdapter livingRoomAdapter;
-        try {
-             livingRoomAdapter = new RoomTempAdapter(
-                    houseSpace.getCoordinate("livingRoom"),
-                    vshp1IP,
-                    5683,
-                    "t1",
-                    "0"
-                    );
-        } catch (ConnectorException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        var livingRoomAdapter = new RoomTempAdapter(
+                houseSpace.getCoordinate("livingRoom"),
+                new CoapDataFeedMessenger(ccc.getSensor("thermometer1").getDataFeedHandler("0"))
+        );
+        var workroomAdapter = new RoomTempAdapter(
+                houseSpace.getCoordinate("workroom"),
+                new CoapDataFeedMessenger(ccc.getSensor("thermometer2").getDataFeedHandler("0"))
+        );
+        var corridorAdapter = new RoomTempAdapter(
+                houseSpace.getCoordinate("corridor"),
+                new CoapDataFeedMessenger(ccc.getSensor("thermometer3").getDataFeedHandler("0"))
+        );
 
-        RoomTempAdapter garageAdapter;
-        try {
-            garageAdapter = new RoomTempAdapter(
-                    houseSpace.getCoordinate("garage"),
-                    vshp2IP,
-                    5683,
-                    "t2",
-                    "0"
-            );
-        } catch (ConnectorException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-
-        RoomTempDataFeed livingRoomDF = new RoomTempDataFeed(houseSpace.getCoordinate("livingRoom"));
-        RoomTempDataFeed garageDF = new RoomTempDataFeed(houseSpace.getCoordinate("garage"));
-        RoomTempDataFeed corridorDF = new RoomTempDataFeed(houseSpace.getCoordinate("corridor"));
-
-        Sensor livingRoomThermometer = new Default("livingRoomThermometer", livingRoomDF);
-        Sensor garageThermometer = new Default("garageThermometer", garageDF);
-        Sensor corridorThermometer = new Default("corridorThermometer", corridorDF);
 
         TemperatureDiffuser diffuser = new TemperatureDiffuser(houseSpace);
         Fire fire = new Fire(houseSpace, 300);
         ChildWithMatches toby = new ChildWithMatches(houseSpace.getCoordinate("livingRoom"));
-        ChildWithMatches sandra = new ChildWithMatches(houseSpace.getCoordinate("garage"));
+        ChildWithMatches sandra = new ChildWithMatches(houseSpace.getCoordinate("corridor"));
 
-        Conductor conductor = new Conductor();
+        conductor = new Conductor(new EventBusImpl(new DiscreteTimeSeconds()));
         conductor.addSimulation(diffuser);
         conductor.addSimulation(fire);
         conductor.addSimulation(toby);
         conductor.addSimulation(sandra);
 
         conductor.addSimulation(livingRoomAdapter);
-        conductor.addSimulation(garageAdapter);
+        conductor.addSimulation(workroomAdapter);
+        conductor.addSimulation(corridorAdapter);
+    }
 
-        conductor.addSimulation(livingRoomDF);
-        conductor.addSimulation(garageDF);
-        conductor.addSimulation(corridorDF);
-        // todo zobecnit fire na cellular automat s nastavitelnou sirkou okoli?
-
-        Thread conductorThread = new Thread(conductor);
-        conductorThread.start();
-
-        for(int i = 0; i < 120; i++) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                System.out.println(e);
-            }
-            System.out.println("Time: " + i);
-            System.out.println();
+    @Test
+    public void test() throws InterruptedException {
 
 
+        conductor.runRealTimeUntil(new DiscreteTimeSeconds(100));
 
-//            houseSpace.getAll().forEach(x -> System.out.println(x));
-//
-//            List<Data> temp = livingRoomThermometer.requestData();
-//            System.out.println(temp.get(0));
-//
-//            List<Data> temp1 = corridorThermometer.requestData();
-//            System.out.println(temp1.get(0));
-//
-//            List<Data> temp2 = garageThermometer.requestData();
-//            System.out.println(temp2.get(0));
+        for (int i = 0; i < 100; i++) {
+            Thread.sleep(1000);
+            System.out.println("Temperature in living room:" +
+                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer1")).getTemperature());
+            System.out.println("Temperature in workroom:" +
+                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer2")).getTemperature());
+            System.out.println("Temperature in corridor:" +
+                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer3")).getTemperature());
         }
     }
 
 
-    private class RoomTempAdapter extends EventBusClientBase {
-        private CoapControlClient ccc;
-        private String deviceLabel;
-        final private String dataFeedLabel;
+
+    private class RoomTempAdapter extends SensorAdapterBase<Integer> {
+
         private Time time = new DiscreteTimeSeconds();
-        private CoapDataFeedHandler dataFeedHandler;
         private Integer temperature = -2;
         private UndirectedGraphCoordinate myRoom;
-
-
-    public RoomTempAdapter(UndirectedGraphCoordinate room, String ip, int port, String deviceLabel, String dataFeedLabel) throws ConnectorException, IOException {
+        public RoomTempAdapter(UndirectedGraphCoordinate room, DataFeedMessenger messenger) {
+            super(messenger);
             this.myRoom = room;
-            this.ccc = new CoapControlClient(ip + ":" + port);
-            this.deviceLabel = deviceLabel;
-            this.dataFeedLabel = dataFeedLabel;
-
-            dataFeedHandler = ccc.getSensor(deviceLabel).getDataFeedHandler(dataFeedLabel);
         }
+
 
         @Override
         public void init () {
             registerRecurringAwake(new DiscreteTimeSeconds(1));
         }
 
+
         @Override
         public void awake () {
             temperature = myRoom.getData("temperature").get(Integer.class);
-            DataFeed newDataFeed = new ConstantDataFeed(temperature);
-            newDataFeed.setLabel(dataFeedLabel);
-            try {
-                dataFeedHandler.updateDataFeed(newDataFeed);
-            } catch (ConnectorException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            System.out.println(myRoom.getName() + "teplota: " + temperature);
+            updateData(temperature);
         }
+
 
         @Override
         public void receive (Data message, String topic){
