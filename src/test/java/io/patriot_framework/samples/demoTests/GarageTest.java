@@ -18,6 +18,7 @@ import io.patriot_framework.generator.eventSimulator.eventGenerator.simulationAd
 import io.patriot_framework.generator.eventSimulator.eventGenerator.simulationAdapter.coapMessengers.CoapActuatorMessenger;
 import io.patriot_framework.generator.eventSimulator.eventGenerator.simulationAdapter.coapMessengers.CoapDataFeedMessenger;
 import io.patriot_framework.generator.eventSimulator.simulationPackages.equations.LinearMotion;
+import io.patriot_framework.hub.PatriotHub;
 import io.patriot_framework.hub.PropertiesNotLoadedException;
 //import io.patriot_framework.samples.utils.vshp_client.AutomaticDoorDTO;
 //import io.patriot_framework.samples.utils.vshp_client.DeviceDTO;
@@ -36,15 +37,7 @@ public class GarageTest{
 
     @BeforeAll
     public void setup() throws PropertiesNotLoadedException {
-        vshp1IP = "localhost";
-//        vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
-//        vshpClient = new VirtualSmartHomePlusHTTPClient(vshp1IP, 8080);
-
-//        doorDTO1 = new AutomaticDoorDTO();
-//        doorDTO1.setLabel("garageDoor");
-//
-//        vshpClient.putDevice("door", doorDTO1);
-
+        vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
 
         conductor = new Conductor(new EventBusImpl(new ContinuousTimeSeconds()));
 
@@ -72,7 +65,7 @@ public class GarageTest{
     }
 
     @Test
-    public void testCrash() throws PropertiesNotLoadedException, InterruptedException {
+    public void carFast() throws PropertiesNotLoadedException, InterruptedException {
 
         var car = new LinearMotion(
                 new StandardCartesianCoordinate(3.0),
@@ -88,7 +81,7 @@ public class GarageTest{
     }
 
     @Test
-    public void test() throws PropertiesNotLoadedException, InterruptedException {
+    public void carSlow() throws PropertiesNotLoadedException, InterruptedException {
 
         var car = new LinearMotion(
                 new StandardCartesianCoordinate(1.0),

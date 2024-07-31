@@ -43,7 +43,6 @@ public class FireSimulation {
     @BeforeAll
     public void setup() throws PropertiesNotLoadedException {
         vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
-//        vshp1IP = "localhost";
 
         UndirectedGraphSpace houseSpace = new UndirectedGraphSpace.UndirectedGraphSpaceBuilder()
                 .addEdge("workroom", "bedroom")
@@ -101,22 +100,18 @@ public class FireSimulation {
 
         for (int i = 0; i < 100; i++) {
             Thread.sleep(1000);
-            System.out.println(getFloatFromJson(vshp1IP + ":8080", "/api/v0.1/house/device/thermometer/thermometer1", "temperature"));
-//            System.out.println("Temperature in living room:" +
-//                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer1")).getTemperature());
-//            System.out.println("Temperature in workroom:" +
-//                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer2")).getTemperature());
-//            System.out.println("Temperature in bedroom:" +
-//                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer3")).getTemperature());
-//            System.out.println("Temperature in bedroom:" +
-//                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer4")).getTemperature());
+            System.out.println("Temperature in living room:" +
+                    getFloatFromJson(vshp1IP + ":8080", "/api/v0.1/house/device/thermometer/thermometer1", "temperature"));
+            System.out.println("Temperature in workroom:" +
+                    getFloatFromJson(vshp1IP + ":8080", "/api/v0.1/house/device/thermometer/thermometer2", "temperature"));
+            System.out.println("Temperature in bedroom:" +
+                    getFloatFromJson(vshp1IP + ":8080", "/api/v0.1/house/device/thermometer/thermometer4", "temperature"));
         }
     }
 
 
     public static float getFloatFromJson(String ip, String path, String jsonKey) throws IOException {
         String url = "http://" + ip + path;
-        System.out.println(url);
         CloseableHttpClient httpClient = HttpClients.createDefault();
         HttpGet request = new HttpGet(url);
         CloseableHttpResponse response = httpClient.execute(request);
@@ -156,7 +151,6 @@ public class FireSimulation {
         @Override
         public void awake () {
             temperature = myRoom.getData("temperature").get(Integer.class);
-            System.out.println(myRoom.getName() + "teplota: " + temperature);
             updateData((double)temperature);
         }
 
