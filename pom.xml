@@ -49,11 +49,6 @@
           <version>${patriot.framework.version}</version>
       </dependency>
       <dependency>
-          <groupId>io.patriot-framework</groupId>
-          <artifactId>virtual-smart-home-plus</artifactId>
-          <version>${patriot.framework.version}</version>
-      </dependency>
-      <dependency>
           <groupId>org.junit.jupiter</groupId>
           <artifactId>junit-jupiter-api</artifactId>
           <version>5.9.0</version>
@@ -87,6 +82,16 @@
           <artifactId>lombok</artifactId>
           <version>1.18.22</version>
           <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.json</groupId>
+          <artifactId>json</artifactId>
+          <version>20210307</version>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.httpcomponents</groupId>
+          <artifactId>httpclient</artifactId>
+          <version>4.5.13</version>
       </dependency>
   </dependencies>
 </project>

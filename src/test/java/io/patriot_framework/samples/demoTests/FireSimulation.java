@@ -2,18 +2,12 @@ package io.patriot_framework.samples.demoTests;
 
 import io.patriot_framework.generator.Data;
 import io.patriot_framework.generator.controll.client.CoapControlClient;
-import io.patriot_framework.generator.controll.client.CoapDataFeedHandler;
-import io.patriot_framework.generator.dataFeed.ConstantDataFeed;
-import io.patriot_framework.generator.dataFeed.DataFeed;
-import io.patriot_framework.generator.device.impl.basicSensors.Default;
-import io.patriot_framework.generator.device.passive.sensors.Sensor;
 import io.patriot_framework.generator.eventSimulator.Time.DiscreteTimeSeconds;
 import io.patriot_framework.generator.eventSimulator.Time.Time;
 
 import io.patriot_framework.generator.eventSimulator.coordinates.graph.UndirectedGraphCoordinate;
 import io.patriot_framework.generator.eventSimulator.coordinates.graph.UndirectedGraphSpace;
 import io.patriot_framework.generator.eventSimulator.eventGenerator.conductor.Conductor;
-import io.patriot_framework.generator.eventSimulator.eventGenerator.eventBus.EventBusClientBase;
 import io.patriot_framework.generator.eventSimulator.eventGenerator.eventBus.EventBusImpl;
 import io.patriot_framework.generator.eventSimulator.eventGenerator.simulationAdapter.DataFeedMessenger;
 import io.patriot_framework.generator.eventSimulator.eventGenerator.simulationAdapter.SensorAdapterBase;
@@ -23,28 +17,35 @@ import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFir
 import io.patriot_framework.generator.eventSimulator.simulationPackages.graphFire.TemperatureDiffuser;
 import io.patriot_framework.hub.PatriotHub;
 import io.patriot_framework.hub.PropertiesNotLoadedException;
-import io.patriot_framework.virtualsmarthomeplus.DTOs.DeviceDTO;
-import io.patriot_framework.virtualsmarthomeplus.DTOs.ThermometerDTO;
-import org.eclipse.californium.elements.exception.ConnectorException;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+
+import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import io.patriot_framework.virtualsmarthomeplus.utils.VirtualSmartHomePlusHttpClient;
 import org.junit.jupiter.api.TestInstance;
 
 import java.io.IOException;
+
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class FireSimulation {
     String vshp1IP;
     CoapControlClient ccc;
-    VirtualSmartHomePlusHttpClient vshpClient;
+//    VirtualSmartHomePlusHTTPClient vshpClient;
     Conductor conductor;
 
 
     @BeforeAll
     public void setup() throws PropertiesNotLoadedException {
-        vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
-        vshpClient = new VirtualSmartHomePlusHttpClient(vshp1IP, 8080);
+//        vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
+        vshp1IP = "localhost";
+//        vshpClient = new VirtualSmartHomePlusHTTPClient(vshp1IP, 8080);
 
         UndirectedGraphSpace houseSpace = new UndirectedGraphSpace.UndirectedGraphSpaceBuilder()
                 .addEdge("workroom", "bedroom")
@@ -61,7 +62,7 @@ public class FireSimulation {
                 .build();
         houseSpace.getAll().forEach(x -> x.setData("temperature", new Data(Integer.class, 20)));
 
-        ccc = new CoapControlClient(vshp1IP + ":" + 5683);
+        ccc = new CoapControlClient(vshp1IP, 5683);
 
         var livingRoomAdapter = new RoomTempAdapter(
                 houseSpace.getCoordinate("livingRoom"),
@@ -71,9 +72,10 @@ public class FireSimulation {
                 houseSpace.getCoordinate("workroom"),
                 new CoapDataFeedMessenger(ccc.getSensor("thermometer2").getDataFeedHandler("0"))
         );
-        var corridorAdapter = new RoomTempAdapter(
-                houseSpace.getCoordinate("corridor"),
-                new CoapDataFeedMessenger(ccc.getSensor("thermometer3").getDataFeedHandler("0"))
+
+        var bedroomAdapter = new RoomTempAdapter(
+                houseSpace.getCoordinate("bedroom"),
+                new CoapDataFeedMessenger(ccc.getSensor("thermometer4").getDataFeedHandler("0"))
         );
 
 
@@ -90,29 +92,53 @@ public class FireSimulation {
 
         conductor.addSimulation(livingRoomAdapter);
         conductor.addSimulation(workroomAdapter);
-        conductor.addSimulation(corridorAdapter);
+        conductor.addSimulation(bedroomAdapter);
     }
 
     @Test
-    public void test() throws InterruptedException {
+    public void test() throws InterruptedException, IOException {
 
 
         conductor.runRealTimeUntil(new DiscreteTimeSeconds(100));
 
         for (int i = 0; i < 100; i++) {
             Thread.sleep(1000);
-            System.out.println("Temperature in living room:" +
-                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer1")).getTemperature());
-            System.out.println("Temperature in workroom:" +
-                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer2")).getTemperature());
-            System.out.println("Temperature in corridor:" +
-                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer3")).getTemperature());
+            System.out.println(getFloatFromJson("localhost:8080", "/api/v0.1/house/device/thermometer/thermometer1", "temperature"));
+//            System.out.println("Temperature in living room:" +
+//                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer1")).getTemperature());
+//            System.out.println("Temperature in workroom:" +
+//                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer2")).getTemperature());
+//            System.out.println("Temperature in bedroom:" +
+//                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer3")).getTemperature());
+//            System.out.println("Temperature in bedroom:" +
+//                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer4")).getTemperature());
         }
     }
 
 
+        public static float getFloatFromJson(String ip, String path, String jsonKey) throws IOException {
+            String url = "http://" + ip + path;
+            System.out.println(url);
+            CloseableHttpClient httpClient = HttpClients.createDefault();
+            HttpGet request = new HttpGet(url);
+            CloseableHttpResponse response = httpClient.execute(request);
 
-    private class RoomTempAdapter extends SensorAdapterBase<Integer> {
+            try {
+                HttpEntity entity = response.getEntity();
+                if (entity != null) {
+                    String result = EntityUtils.toString(entity);
+                    JSONObject jsonObject = new JSONObject(result);
+                    return jsonObject.getFloat(jsonKey);
+                }
+            } finally {
+                response.close();
+            }
+            return -1; // or throw an exception if appropriate
+    }
+
+
+
+    private class RoomTempAdapter extends SensorAdapterBase<Double> {
 
         private Time time = new DiscreteTimeSeconds();
         private Integer temperature = -2;
@@ -133,7 +159,7 @@ public class FireSimulation {
         public void awake () {
             temperature = myRoom.getData("temperature").get(Integer.class);
             System.out.println(myRoom.getName() + "teplota: " + temperature);
-            updateData(temperature);
+            updateData((double)temperature);
         }
 
 
