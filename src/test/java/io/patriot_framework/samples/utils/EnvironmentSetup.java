@@ -30,13 +30,13 @@ public class EnvironmentSetup extends PatriotSetupExtension {
     }
 
     public void setUp() {
-//        d.createTopology();
-//        d.deployApplications();
+        d.createTopology();
+        d.deployApplications();
         setUp = true;
     }
 
     public void tearDown() {
-//        d.stopDocker();
+        d.stopDocker();
     }
 
     protected UUID getUUID() {

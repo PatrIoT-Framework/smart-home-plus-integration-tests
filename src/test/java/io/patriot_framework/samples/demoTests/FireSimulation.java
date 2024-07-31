@@ -37,15 +37,13 @@ import java.io.IOException;
 public class FireSimulation {
     String vshp1IP;
     CoapControlClient ccc;
-//    VirtualSmartHomePlusHTTPClient vshpClient;
     Conductor conductor;
 
 
     @BeforeAll
     public void setup() throws PropertiesNotLoadedException {
-//        vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
-        vshp1IP = "localhost";
-//        vshpClient = new VirtualSmartHomePlusHTTPClient(vshp1IP, 8080);
+        vshp1IP = PatriotHub.getInstance().getApplication("smarthome1").getIPAddress();
+//        vshp1IP = "localhost";
 
         UndirectedGraphSpace houseSpace = new UndirectedGraphSpace.UndirectedGraphSpaceBuilder()
                 .addEdge("workroom", "bedroom")
@@ -103,7 +101,7 @@ public class FireSimulation {
 
         for (int i = 0; i < 100; i++) {
             Thread.sleep(1000);
-            System.out.println(getFloatFromJson("localhost:8080", "/api/v0.1/house/device/thermometer/thermometer1", "temperature"));
+            System.out.println(getFloatFromJson(vshp1IP + ":8080", "/api/v0.1/house/device/thermometer/thermometer1", "temperature"));
 //            System.out.println("Temperature in living room:" +
 //                    ((ThermometerDTO) vshpClient.getDevice("thermometer", "thermometer1")).getTemperature());
 //            System.out.println("Temperature in workroom:" +
@@ -116,24 +114,24 @@ public class FireSimulation {
     }
 
 
-        public static float getFloatFromJson(String ip, String path, String jsonKey) throws IOException {
-            String url = "http://" + ip + path;
-            System.out.println(url);
-            CloseableHttpClient httpClient = HttpClients.createDefault();
-            HttpGet request = new HttpGet(url);
-            CloseableHttpResponse response = httpClient.execute(request);
+    public static float getFloatFromJson(String ip, String path, String jsonKey) throws IOException {
+        String url = "http://" + ip + path;
+        System.out.println(url);
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        HttpGet request = new HttpGet(url);
+        CloseableHttpResponse response = httpClient.execute(request);
 
-            try {
-                HttpEntity entity = response.getEntity();
-                if (entity != null) {
-                    String result = EntityUtils.toString(entity);
-                    JSONObject jsonObject = new JSONObject(result);
-                    return jsonObject.getFloat(jsonKey);
-                }
-            } finally {
-                response.close();
+        try {
+            HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                String result = EntityUtils.toString(entity);
+                JSONObject jsonObject = new JSONObject(result);
+                return jsonObject.getFloat(jsonKey);
             }
-            return -1; // or throw an exception if appropriate
+        } finally {
+            response.close();
+        }
+        return -1;
     }
 
 
